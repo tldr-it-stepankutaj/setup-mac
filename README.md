@@ -35,7 +35,7 @@ sudo cp bin/setup-mac /usr/local/bin/
 ### From Source
 
 Requirements:
-- Go 1.25+
+- Go 1.24+
 - macOS (tested on Sonoma 14.x)
 - Xcode Command Line Tools (`xcode-select --install`)
 
