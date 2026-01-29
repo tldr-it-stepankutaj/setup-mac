@@ -22,7 +22,7 @@ CLI tool for automating macOS developer environment setup.
 
 ### From Release
 
-Download the latest release from [Releases](https://github.com/stepankutaj/setup-mac/releases).
+Download the latest release from [Releases](https://github.com/tldr-it-stepankutaj/setup-mac/releases).
 
 ```bash
 # Extract
@@ -44,7 +44,7 @@ Requirements:
 - Xcode Command Line Tools (`xcode-select --install`)
 
 ```bash
-git clone https://github.com/stepankutaj/setup-mac.git
+git clone https://github.com/tldr-it-stepankutaj/setup-mac.git
 cd setup-mac
 make build
 make install
@@ -169,7 +169,7 @@ ssh:
 ### Setup
 
 ```bash
-git clone https://github.com/stepankutaj/setup-mac.git
+git clone https://github.com/tldr-it-stepankutaj/setup-mac.git
 cd setup-mac
 make deps
 make install-tools
