@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question
+    url: https://github.com/tldr-it-stepankutaj/setup-mac/discussions
+    about: Ask questions in GitHub Discussions
+  - name: Security Issue
+    url: https://github.com/tldr-it-stepankutaj/setup-mac/security/policy
+    about: Report security vulnerabilities privately
