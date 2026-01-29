@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/stepankutaj/setup-mac/internal/ui"
+	"github.com/tldr-it-stepankutaj/setup-mac/internal/ui"
 )
 
 // SSHInstaller handles SSH key generation

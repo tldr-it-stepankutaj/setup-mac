@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stepankutaj/setup-mac/internal/ui"
+	"github.com/tldr-it-stepankutaj/setup-mac/internal/ui"
 )
 
 // ShellInstaller handles shell configuration

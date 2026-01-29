@@ -61,9 +61,9 @@ jobs:
           COMMIT=$(git rev-parse --short HEAD)
           BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          LDFLAGS="-X github.com/stepankutaj/setup-mac/internal/cli.Version=$VERSION"
-          LDFLAGS="$LDFLAGS -X github.com/stepankutaj/setup-mac/internal/cli.Commit=$COMMIT"
-          LDFLAGS="$LDFLAGS -X github.com/stepankutaj/setup-mac/internal/cli.BuildDate=$BUILD_DATE"
+          LDFLAGS="-X github.com/tldr-it-stepankutaj/setup-mac/internal/cli.Version=$VERSION"
+          LDFLAGS="$LDFLAGS -X github.com/tldr-it-stepankutaj/setup-mac/internal/cli.Commit=$COMMIT"
+          LDFLAGS="$LDFLAGS -X github.com/tldr-it-stepankutaj/setup-mac/internal/cli.BuildDate=$BUILD_DATE"
 
           mkdir -p bin
           go build -ldflags "$LDFLAGS" -o bin/setup-mac ./cmd/setup-mac

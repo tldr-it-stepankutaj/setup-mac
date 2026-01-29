@@ -9,9 +9,9 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/stepankutaj/setup-mac/internal/config"
-	"github.com/stepankutaj/setup-mac/internal/installer"
-	"github.com/stepankutaj/setup-mac/internal/ui"
+	"github.com/tldr-it-stepankutaj/setup-mac/internal/config"
+	"github.com/tldr-it-stepankutaj/setup-mac/internal/installer"
+	"github.com/tldr-it-stepankutaj/setup-mac/internal/ui"
 )
 
 var (

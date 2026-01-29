@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/stepankutaj/setup-mac/internal/ui"
+	"github.com/tldr-it-stepankutaj/setup-mac/internal/ui"
 )
 
 // MacOSInstaller handles macOS defaults configuration

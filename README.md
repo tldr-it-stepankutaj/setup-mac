@@ -1,10 +1,10 @@
 # setup-mac
 
-[![CI](https://github.com/stepankutaj/setup-mac/actions/workflows/ci.yml/badge.svg)](https://github.com/stepankutaj/setup-mac/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/stepankutaj/setup-mac)](https://github.com/stepankutaj/setup-mac/releases/latest)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/stepankutaj/setup-mac)](https://github.com/stepankutaj/setup-mac)
-[![License](https://img.shields.io/github/license/stepankutaj/setup-mac)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/stepankutaj/setup-mac)](https://goreportcard.com/report/github.com/stepankutaj/setup-mac)
+[![CI](https://github.com/tldr-it-stepankutaj/setup-mac/actions/workflows/ci.yml/badge.svg)](https://github.com/tldr-it-stepankutaj/setup-mac/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/tldr-it-stepankutaj/setup-mac)](https://github.com/tldr-it-stepankutaj/setup-mac/releases/latest)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/tldr-it-stepankutaj/setup-mac)](https://github.com/tldr-it-stepankutaj/setup-mac)
+[![License](https://img.shields.io/github/license/tldr-it-stepankutaj/setup-mac)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tldr-it-stepankutaj/setup-mac)](https://goreportcard.com/report/github.com/tldr-it-stepankutaj/setup-mac)
 
 CLI tool for automating macOS developer environment setup.
 

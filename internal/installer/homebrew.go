@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/stepankutaj/setup-mac/internal/ui"
+	"github.com/tldr-it-stepankutaj/setup-mac/internal/ui"
 )
 
 const (

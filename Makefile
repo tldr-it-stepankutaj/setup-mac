@@ -5,9 +5,9 @@ BINARY_NAME=setup-mac
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-LDFLAGS=-ldflags "-X github.com/stepankutaj/setup-mac/internal/cli.Version=$(VERSION) \
-                  -X github.com/stepankutaj/setup-mac/internal/cli.Commit=$(COMMIT) \
-                  -X github.com/stepankutaj/setup-mac/internal/cli.BuildDate=$(BUILD_DATE)"
+LDFLAGS=-ldflags "-X github.com/tldr-it-stepankutaj/setup-mac/internal/cli.Version=$(VERSION) \
+                  -X github.com/tldr-it-stepankutaj/setup-mac/internal/cli.Commit=$(COMMIT) \
+                  -X github.com/tldr-it-stepankutaj/setup-mac/internal/cli.BuildDate=$(BUILD_DATE)"
 
 # Go commands
 GO=go
