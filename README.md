@@ -248,4 +248,4 @@ Stepan Kutaj <stepan.kutaj@tldr-it.com>
 
 ## License
 
-MIT
+Apache-2.0 [License](LICENSE)
