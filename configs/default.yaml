@@ -1,0 +1,115 @@
+version: "1.0"
+
+settings:
+  dry_run: false
+  interactive: true
+  backup_dotfiles: true
+
+homebrew:
+  install: true
+  taps:
+    - homebrew/cask-fonts
+  formulae:
+    - git
+    - gh
+    - fzf
+    - ripgrep
+    - bat
+    - eza
+    - jq
+    - yq
+    - htop
+    - tree
+    - wget
+    - curl
+  casks:
+    - iterm2
+    - visual-studio-code
+    - docker
+    - rectangle
+    - font-meslo-lg-nerd-font
+
+terminal:
+  oh_my_zsh:
+    install: true
+    theme: powerlevel10k/powerlevel10k
+    plugins:
+      - git
+      - docker
+      - kubectl
+      - fzf
+      - zsh-autosuggestions
+      - zsh-syntax-highlighting
+  powerlevel10k:
+    install: true
+    style: ""
+
+shell:
+  aliases:
+    ll: "eza -la --icons"
+    la: "eza -a --icons"
+    ls: "eza --icons"
+    lt: "eza --tree --icons"
+    cat: "bat"
+    gs: "git status"
+    gp: "git pull"
+    gc: "git commit"
+    gco: "git checkout"
+    gd: "git diff"
+    k: "kubectl"
+    kgp: "kubectl get pods"
+    kgs: "kubectl get svc"
+    dc: "docker-compose"
+  environment:
+    EDITOR: "code --wait"
+    VISUAL: "code --wait"
+    LANG: "en_US.UTF-8"
+    LC_ALL: "en_US.UTF-8"
+  zshrc_extras: []
+
+macos:
+  configure: true
+  defaults:
+    dock:
+      autohide: true
+      autohide_delay: 0
+      tile_size: 48
+      magnification: false
+      minimize_to_app: true
+      show_recents: false
+    finder:
+      show_hidden_files: true
+      show_extensions: true
+      show_path_bar: true
+      show_status_bar: true
+      default_view_style: "list"
+    keyboard:
+      key_repeat: 2
+      initial_key_repeat: 15
+      disable_smart_quotes: true
+      disable_smart_dashes: true
+
+git:
+  configure: true
+  user:
+    name: ""
+    email: ""
+  aliases:
+    st: "status"
+    co: "checkout"
+    br: "branch"
+    ci: "commit"
+    unstage: "reset HEAD --"
+    last: "log -1 HEAD"
+    lg: "log --oneline --graph --decorate"
+  settings:
+    init.defaultBranch: "main"
+    pull.rebase: "true"
+    push.autoSetupRemote: "true"
+    core.editor: "code --wait"
+
+ssh:
+  generate_key: true
+  key_type: "ed25519"
+  key_file: "~/.ssh/id_ed25519"
+  comment: ""

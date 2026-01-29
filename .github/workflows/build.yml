@@ -1,0 +1,146 @@
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+  build:
+    runs-on: macos-latest
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Get version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="dev-$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          COMMIT=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          LDFLAGS="-X github.com/stepankutaj/setup-mac/internal/cli.Version=$VERSION"
+          LDFLAGS="$LDFLAGS -X github.com/stepankutaj/setup-mac/internal/cli.Commit=$COMMIT"
+          LDFLAGS="$LDFLAGS -X github.com/stepankutaj/setup-mac/internal/cli.BuildDate=$BUILD_DATE"
+
+          mkdir -p bin
+          go build -ldflags "$LDFLAGS" -o bin/setup-mac ./cmd/setup-mac
+
+      - name: Create distribution package
+        run: |
+          DIST_NAME="setup-mac-${{ matrix.goos }}-${{ matrix.goarch }}"
+          mkdir -p dist/$DIST_NAME/bin
+
+          # Copy binary
+          cp bin/setup-mac dist/$DIST_NAME/bin/
+
+          # Copy config
+          cp -r configs dist/$DIST_NAME/
+
+          # Copy README
+          cp README.md dist/$DIST_NAME/
+
+          # Create install Makefile for distribution
+          cat > dist/$DIST_NAME/Makefile << 'EOF'
+          # setup-mac Installation Makefile
+
+          BINARY_NAME=setup-mac
+          INSTALL_DIR=/usr/local/bin
+          CONFIG_DIR=$(HOME)/.config/setup-mac
+
+          .PHONY: install uninstall
+
+          install:
+          	@echo "Installing $(BINARY_NAME)..."
+          	@mkdir -p $(INSTALL_DIR)
+          	@cp bin/$(BINARY_NAME) $(INSTALL_DIR)/
+          	@chmod +x $(INSTALL_DIR)/$(BINARY_NAME)
+          	@mkdir -p $(CONFIG_DIR)
+          	@cp configs/default.yaml $(CONFIG_DIR)/
+          	@echo "Installed $(BINARY_NAME) to $(INSTALL_DIR)"
+          	@echo "Default config copied to $(CONFIG_DIR)/default.yaml"
+
+          uninstall:
+          	@echo "Uninstalling $(BINARY_NAME)..."
+          	@rm -f $(INSTALL_DIR)/$(BINARY_NAME)
+          	@echo "Removed $(BINARY_NAME) from $(INSTALL_DIR)"
+          	@echo "Config files in $(CONFIG_DIR) were not removed"
+          EOF
+
+          # Create tarball
+          cd dist
+          tar -czvf $DIST_NAME.tar.gz $DIST_NAME
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup-mac-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/setup-mac-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.tar.gz
+          generate_release_notes: true
