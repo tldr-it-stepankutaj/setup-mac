@@ -54,10 +54,21 @@ make fmt
 
 ## Pull Request Process
 
-1. Ensure your code passes all tests and linting
-2. Update documentation if needed
-3. Add tests for new functionality
-4. Create a pull request with a clear description
+> **Note:** Direct pushes to `main` branch are not allowed. All changes must go through a pull request.
+
+1. Ensure your code passes all tests and linting:
+   ```bash
+   make test
+   make lint
+   ```
+2. Push your branch to your fork:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+3. Create a pull request against `main` branch
+4. Wait for CI checks to pass
+5. Wait for maintainer approval
+6. Once approved, the PR will be merged
 
 ### PR Title Format
 
@@ -75,6 +86,14 @@ Use conventional commit format:
 - Describe what changes you made
 - Explain why these changes are needed
 - Reference related issues (e.g., `Fixes #123`)
+
+### PR Requirements
+
+Before a PR can be merged:
+
+- All CI checks must pass (tests, linting)
+- At least one maintainer approval is required
+- Branch must be up to date with `main`
 
 ## Code Style
 

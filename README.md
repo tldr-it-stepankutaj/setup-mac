@@ -246,6 +246,13 @@ make uninstall
 sudo rm /usr/local/bin/setup-mac
 ```
 
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a pull request.
+
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security Policy](SECURITY.md)
+
 ## Author
 
 Stepan Kutaj <stepan.kutaj@tldr-it.com>
