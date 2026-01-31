@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/tldr-it-stepankutaj/setup-mac/internal/ui"
 )
@@ -74,21 +75,31 @@ func (g *GitInstaller) Install(ctx context.Context) error {
 func (g *GitInstaller) configureUser(ctx context.Context) error {
 	user := g.ctx.Config.Git.User
 
-	// Get name from config or prompt (skip prompting in dry-run mode)
+	// Try to get existing git config values as defaults
+	existingName := g.getExistingConfig(ctx, "user.name")
+	existingEmail := g.getExistingConfig(ctx, "user.email")
+
+	// Get name: config -> existing -> prompt
 	name := user.Name
+	if name == "" {
+		name = existingName
+	}
 	if name == "" && g.ctx.Config.Settings.Interactive && !g.ctx.DryRun {
 		var err error
-		name, err = g.ctx.Prompt.Input("Git user name", "")
+		name, err = g.ctx.Prompt.Input("Git user name (required for commits)", "")
 		if err != nil {
 			return fmt.Errorf("failed to get user name: %w", err)
 		}
 	}
 
-	// Get email from config or prompt (skip prompting in dry-run mode)
+	// Get email: config -> existing -> prompt
 	email := user.Email
+	if email == "" {
+		email = existingEmail
+	}
 	if email == "" && g.ctx.Config.Settings.Interactive && !g.ctx.DryRun {
 		var err error
-		email, err = g.ctx.Prompt.Input("Git user email", "")
+		email, err = g.ctx.Prompt.Input("Git user email (required for commits)", "")
 		if err != nil {
 			return fmt.Errorf("failed to get user email: %w", err)
 		}
@@ -101,6 +112,8 @@ func (g *GitInstaller) configureUser(ctx context.Context) error {
 		}
 	} else if g.ctx.DryRun {
 		ui.PrintDryRun("Would prompt for Git user name")
+	} else {
+		ui.PrintWarning("Git user.name not set - commits will fail without this")
 	}
 
 	// Set user email
@@ -110,9 +123,23 @@ func (g *GitInstaller) configureUser(ctx context.Context) error {
 		}
 	} else if g.ctx.DryRun {
 		ui.PrintDryRun("Would prompt for Git user email")
+	} else {
+		ui.PrintWarning("Git user.email not set - commits will fail without this")
 	}
 
 	return nil
+}
+
+// getExistingConfig gets an existing git config value
+func (g *GitInstaller) getExistingConfig(ctx context.Context, key string) string {
+	if g.ctx.DryRun {
+		return ""
+	}
+	result, err := g.ctx.Executor.Run(ctx, "git", "config", "--global", "--get", key)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(result.Stdout)
 }
 
 func (g *GitInstaller) configureAliases(ctx context.Context) error {

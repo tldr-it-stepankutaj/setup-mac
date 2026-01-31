@@ -15,7 +15,6 @@ homebrew:
     - fzf
     - ripgrep
     - bat
-    - eza
     - jq
     - yq
     - htop
@@ -46,10 +45,9 @@ terminal:
 
 shell:
   aliases:
-    ll: "eza -la --icons"
-    la: "eza -a --icons"
-    ls: "eza --icons"
-    lt: "eza --tree --icons"
+    ll: "ls -la"
+    la: "ls -a"
+    lt: "tree"
     cat: "bat"
     gs: "git status"
     gp: "git pull"

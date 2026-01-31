@@ -14,9 +14,34 @@ import (
 	"github.com/tldr-it-stepankutaj/setup-mac/internal/ui"
 )
 
+// checkNotRoot ensures the tool is not run as root or with sudo
+func checkNotRoot() error {
+	// Check if running as root (UID 0)
+	if os.Geteuid() == 0 {
+		return fmt.Errorf(`setup-mac should NOT be run as root or with sudo
+
+Running as root can cause permission issues:
+  - Files in your home directory will be owned by root
+  - Homebrew explicitly refuses to run as root
+  - Shell configs like .zshrc will become inaccessible
+
+Please run without sudo:
+  setup-mac install --all`)
+	}
+
+	// Also check SUDO_USER - some commands might still have issues
+	if os.Getenv("SUDO_USER") != "" {
+		ui.PrintWarning("Detected SUDO_USER environment variable. Some operations may have permission issues.")
+	}
+
+	return nil
+}
+
 var (
 	dryRun          bool
 	installAll      bool
+	installXcode    bool
+	installRosetta  bool
 	installHomebrew bool
 	installTerminal bool
 	installShell    bool
@@ -52,6 +77,8 @@ func init() {
 
 	installCmd.Flags().BoolVarP(&dryRun, "dry-run", "n", false, "show what would be done without making changes")
 	installCmd.Flags().BoolVarP(&installAll, "all", "a", false, "install all components")
+	installCmd.Flags().BoolVar(&installXcode, "xcode", false, "install Xcode Command Line Tools")
+	installCmd.Flags().BoolVar(&installRosetta, "rosetta", false, "install Rosetta 2 (Apple Silicon only)")
 	installCmd.Flags().BoolVar(&installHomebrew, "homebrew", false, "install Homebrew and packages")
 	installCmd.Flags().BoolVar(&installTerminal, "terminal", false, "install Oh-My-Zsh and Powerlevel10k")
 	installCmd.Flags().BoolVar(&installShell, "shell", false, "configure shell aliases and environment")
@@ -62,6 +89,19 @@ func init() {
 
 func runInstall(cmd *cobra.Command, args []string) error {
 	printBanner()
+
+	// Check if running as root/sudo - this can cause permission issues
+	if err := checkNotRoot(); err != nil {
+		return err
+	}
+
+	// Check network connectivity (skip in dry-run mode)
+	if !dryRun {
+		networkChecker := installer.NewNetworkChecker()
+		if err := networkChecker.CheckConnectivity(context.Background()); err != nil {
+			return err
+		}
+	}
 
 	// Load configuration
 	cfg, err := config.Load(cfgFile)
@@ -119,14 +159,15 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 	}
 
-	// Run installers
+	// Run installers with progress indication
 	var errors []error
-	for _, inst := range installersToRun {
+	total := len(installersToRun)
+	for i, inst := range installersToRun {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("installation interrupted")
 		default:
-			if err := installer.RunInstaller(ctx, inst, ictx); err != nil {
+			if err := installer.RunInstallerWithProgress(ctx, inst, ictx, i+1, total); err != nil {
 				errors = append(errors, fmt.Errorf("%s: %w", inst.Name(), err))
 			}
 		}
@@ -156,7 +197,9 @@ func determineInstallers(ictx *installer.Context) []installer.Installer {
 	var installers []installer.Installer
 
 	if installAll {
-		// Install all in order
+		// Install all in order - prerequisites first
+		installers = append(installers, installer.NewXcodeInstaller(ictx))
+		installers = append(installers, installer.NewRosettaInstaller(ictx))
 		installers = append(installers, installer.NewHomebrewInstaller(ictx))
 		installers = append(installers, installer.NewOhMyZshInstaller(ictx))
 		installers = append(installers, installer.NewPowerlevel10kInstaller(ictx))
@@ -165,6 +208,14 @@ func determineInstallers(ictx *installer.Context) []installer.Installer {
 		installers = append(installers, installer.NewGitInstaller(ictx))
 		installers = append(installers, installer.NewSSHInstaller(ictx))
 		return installers
+	}
+
+	if installXcode {
+		installers = append(installers, installer.NewXcodeInstaller(ictx))
+	}
+
+	if installRosetta {
+		installers = append(installers, installer.NewRosettaInstaller(ictx))
 	}
 
 	if installHomebrew {
