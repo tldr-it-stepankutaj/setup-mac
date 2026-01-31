@@ -142,7 +142,8 @@ func (h *HomebrewInstaller) installFormulae(ctx context.Context, formulae []stri
 	installed := h.getInstalledFormulae(ctx)
 
 	for _, formula := range formulae {
-		if installed[formula] {
+		// Check if already installed (exact match or base name match for versioned packages)
+		if h.isFormulaInstalled(formula, installed) {
 			ui.PrintInfo(fmt.Sprintf("Formula already installed: %s", formula))
 			continue
 		}
@@ -152,6 +153,11 @@ func (h *HomebrewInstaller) installFormulae(ctx context.Context, formulae []stri
 
 		result, err := h.ctx.Executor.Run(ctx, "brew", "install", formula)
 		if err != nil {
+			// Check if it's actually installed despite the error (e.g., already installed warning)
+			if h.isFormulaInstalled(formula, h.getInstalledFormulae(ctx)) {
+				spinner.Success(fmt.Sprintf("Already installed: %s", formula))
+				continue
+			}
 			spinner.Fail(fmt.Sprintf("Failed to install: %s", formula))
 			continue
 		}
@@ -166,13 +172,48 @@ func (h *HomebrewInstaller) installFormulae(ctx context.Context, formulae []stri
 	return nil
 }
 
+// isFormulaInstalled checks if a formula is installed, handling versioned packages
+func (h *HomebrewInstaller) isFormulaInstalled(formula string, installed map[string]bool) bool {
+	// Exact match
+	if installed[formula] {
+		return true
+	}
+
+	// Check for versioned variants (e.g., "node" matches "node@18", "node@20")
+	baseName := formula
+	if idx := strings.Index(formula, "@"); idx != -1 {
+		baseName = formula[:idx]
+	}
+
+	for pkg := range installed {
+		pkgBase := pkg
+		if idx := strings.Index(pkg, "@"); idx != -1 {
+			pkgBase = pkg[:idx]
+		}
+		if pkgBase == baseName {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (h *HomebrewInstaller) installCasks(ctx context.Context, casks []string) error {
 	// Check which casks are already installed
 	installed := h.getInstalledCasks(ctx)
 
+	// Also check Applications folder for already installed apps
+	installedApps := h.getInstalledApplications()
+
 	for _, cask := range casks {
 		if installed[cask] {
 			ui.PrintInfo(fmt.Sprintf("Cask already installed: %s", cask))
+			continue
+		}
+
+		// Check if app is already in /Applications (manually installed)
+		if h.isCaskAppInstalled(cask, installedApps) {
+			ui.PrintInfo(fmt.Sprintf("Application already installed (not via Homebrew): %s", cask))
 			continue
 		}
 
@@ -181,6 +222,11 @@ func (h *HomebrewInstaller) installCasks(ctx context.Context, casks []string) er
 
 		result, err := h.ctx.Executor.Run(ctx, "brew", "install", "--cask", cask)
 		if err != nil {
+			// Check if it failed because already installed
+			if result != nil && strings.Contains(result.Stderr, "already installed") {
+				spinner.Success(fmt.Sprintf("Already installed: %s", cask))
+				continue
+			}
 			spinner.Fail(fmt.Sprintf("Failed to install cask: %s", cask))
 			continue
 		}
@@ -193,6 +239,48 @@ func (h *HomebrewInstaller) installCasks(ctx context.Context, casks []string) er
 	}
 
 	return nil
+}
+
+// getInstalledApplications returns a list of apps in /Applications
+func (h *HomebrewInstaller) getInstalledApplications() map[string]bool {
+	apps := make(map[string]bool)
+
+	entries, err := os.ReadDir("/Applications")
+	if err != nil {
+		return apps
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		// Remove .app suffix and lowercase for comparison
+		if strings.HasSuffix(name, ".app") {
+			name = strings.TrimSuffix(name, ".app")
+			apps[strings.ToLower(name)] = true
+		}
+	}
+
+	return apps
+}
+
+// isCaskAppInstalled checks if a cask's app is already installed
+func (h *HomebrewInstaller) isCaskAppInstalled(cask string, installedApps map[string]bool) bool {
+	// Common cask name to app name mappings
+	caskToApp := map[string]string{
+		"visual-studio-code": "visual studio code",
+		"google-chrome":      "google chrome",
+		"sublime-text":       "sublime text",
+		"intellij-idea":      "intellij idea",
+		"intellij-idea-ce":   "intellij idea ce",
+	}
+
+	// Check mapping first
+	if appName, ok := caskToApp[cask]; ok {
+		return installedApps[appName]
+	}
+
+	// Try direct match (replace hyphens with spaces)
+	normalizedCask := strings.ReplaceAll(cask, "-", " ")
+	return installedApps[strings.ToLower(normalizedCask)] || installedApps[cask]
 }
 
 func (h *HomebrewInstaller) getInstalledFormulae(ctx context.Context) map[string]bool {

@@ -124,6 +124,16 @@ func PrintHeader(msg string) {
 	fmt.Println()
 }
 
+// PrintHeaderWithProgress prints a section header with progress indicator [current/total]
+func PrintHeaderWithProgress(msg string, current, total int) {
+	fmt.Println()
+	color.New(color.FgMagenta, color.Bold).Println("═══════════════════════════════════════")
+	color.New(color.FgCyan, color.Bold).Printf("  [%d/%d] ", current, total)
+	color.New(color.FgMagenta, color.Bold).Printf("%s\n", msg)
+	color.New(color.FgMagenta, color.Bold).Println("═══════════════════════════════════════")
+	fmt.Println()
+}
+
 // PrintStep prints a step message
 func PrintStep(msg string) {
 	color.New(color.FgBlue).Print("→ ")

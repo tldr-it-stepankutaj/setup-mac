@@ -118,22 +118,31 @@ func init() {
 
 // RunInstaller runs a single installer
 func RunInstaller(ctx context.Context, installer Installer, ictx *Context) error {
-	ui.PrintHeader(installer.Description())
+	return RunInstallerWithProgress(ctx, installer, ictx, 0, 0)
+}
+
+// RunInstallerWithProgress runs a single installer with progress indication
+func RunInstallerWithProgress(ctx context.Context, installer Installer, ictx *Context, current, total int) error {
+	// Print header with progress if provided
+	if total > 0 {
+		ui.PrintHeaderWithProgress(installer.Description(), current, total)
+	} else {
+		ui.PrintHeader(installer.Description())
+	}
 
 	if installer.IsInstalled(ctx) {
 		ui.PrintInfo(fmt.Sprintf("%s is already installed", installer.Name()))
 		return nil
 	}
 
-	spinner := ui.NewSpinner(fmt.Sprintf("Installing %s...", installer.Name()))
-	spinner.Start()
-
+	// Don't use spinner here - installers may have interactive prompts
+	// Each installer manages its own output and spinners
 	err := installer.Install(ctx)
 	if err != nil {
-		spinner.Fail(fmt.Sprintf("Failed to install %s: %v", installer.Name(), err))
+		ui.PrintError(fmt.Sprintf("Failed to install %s: %v", installer.Name(), err))
 		return err
 	}
 
-	spinner.Success(fmt.Sprintf("%s installed successfully", installer.Name()))
+	ui.PrintSuccess(fmt.Sprintf("%s installed successfully", installer.Name()))
 	return nil
 }
