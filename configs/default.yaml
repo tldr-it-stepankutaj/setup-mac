@@ -14,21 +14,23 @@ homebrew:
     - gh
     - fzf
     - ripgrep
-    - bat
-    - eza
     - jq
     - yq
     - htop
     - tree
     - wget
     - curl
+    - python@3.14
+    - openjdk@21
+    - golang
   casks:
     - iterm2
     - visual-studio-code
-    - docker
+    - docker-desktop
     - rectangle
     - font-meslo-lg-nerd-font
-
+    - firefox
+    - vlc
 terminal:
   oh_my_zsh:
     install: true
@@ -40,17 +42,22 @@ terminal:
       - fzf
       - zsh-autosuggestions
       - zsh-syntax-highlighting
+      - colored-man-pages
+      - colorize
+      - brew
+      - ssh-agent
+      - pip
+      - python
   powerlevel10k:
     install: true
     style: ""
 
 shell:
   aliases:
-    ll: "eza -la --icons"
-    la: "eza -a --icons"
-    ls: "eza --icons"
-    lt: "eza --tree --icons"
-    cat: "bat"
+    ll: "ls -la"
+    la: "ls -a"
+    ls: "ls"
+    lt: "ls -ltra"
     gs: "git status"
     gp: "git pull"
     gc: "git commit"
@@ -61,8 +68,8 @@ shell:
     kgs: "kubectl get svc"
     dc: "docker-compose"
   environment:
-    EDITOR: "code --wait"
-    VISUAL: "code --wait"
+    EDITOR: "vim"
+    VISUAL: "code"
     LANG: "en_US.UTF-8"
     LC_ALL: "en_US.UTF-8"
   zshrc_extras: []
@@ -90,7 +97,7 @@ macos:
       disable_smart_dashes: true
 
 git:
-  configure: true
+  configure: false
   user:
     name: ""
     email: ""
@@ -109,7 +116,7 @@ git:
     core.editor: "code --wait"
 
 ssh:
-  generate_key: true
+  generate_key: false
   key_type: "ed25519"
   key_file: "~/.ssh/id_ed25519"
   comment: ""

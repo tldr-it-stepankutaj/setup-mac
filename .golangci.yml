@@ -1,0 +1,32 @@
+version: "2"
+
+# Run config
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+  settings:
+    errcheck:
+      # The fmt/color "print to terminal" family always returns nil for *os.File
+      # writers; checking the error every time is noise. We DO still want errcheck
+      # to flag real I/O — file writes, http body close, command exec, env mutation.
+      exclude-functions:
+        - (*github.com/fatih/color.Color).Print
+        - (*github.com/fatih/color.Color).Printf
+        - (*github.com/fatih/color.Color).Println
+        - (*github.com/fatih/color.Color).Fprint
+        - (*github.com/fatih/color.Color).Fprintf
+        - (*github.com/fatih/color.Color).Fprintln
+        - fmt.Print
+        - fmt.Printf
+        - fmt.Println
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln

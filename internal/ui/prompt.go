@@ -1,7 +1,11 @@
 package ui
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 
 	"github.com/manifoldco/promptui"
 )
@@ -18,32 +22,43 @@ func NewPrompt(interactive bool) *Prompt {
 	}
 }
 
-// Confirm asks for yes/no confirmation
+// Confirm asks for yes/no confirmation.
+//
+// Implemented with bufio rather than promptui.IsConfirm because promptui ignores
+// the Default field in confirm mode and treats Enter as ErrAbort, which silently
+// flipped "Proceed? [Y/n]" to "no" whenever the user just hit return.
 func (p *Prompt) Confirm(label string, defaultVal bool) (bool, error) {
 	if !p.Interactive {
 		return defaultVal, nil
 	}
 
-	defaultStr := "n"
+	suffix := "[y/N]"
 	if defaultVal {
-		defaultStr = "y"
+		suffix = "[Y/n]"
 	}
 
-	prompt := promptui.Prompt{
-		Label:     label,
-		IsConfirm: true,
-		Default:   defaultStr,
-	}
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Fprintf(os.Stderr, "%s %s: ", label, suffix)
 
-	result, err := prompt.Run()
-	if err != nil {
-		if err == promptui.ErrAbort {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				return defaultVal, nil
+			}
+			return defaultVal, err
+		}
+
+		switch strings.ToLower(strings.TrimSpace(line)) {
+		case "":
+			return defaultVal, nil
+		case "y", "yes":
+			return true, nil
+		case "n", "no":
 			return false, nil
 		}
-		return defaultVal, err
+		fmt.Fprintln(os.Stderr, "Please answer y or n.")
 	}
-
-	return result == "y" || result == "Y" || result == "", nil
 }
 
 // Input asks for text input

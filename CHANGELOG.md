@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-05-04
+
+### Added
+- **`setup-mac config init`** command — writes the embedded default config to `~/.config/setup-mac/config.yaml` (or any path with `--output`); refuses to overwrite without `--force`. Gives users a starting point to edit instead of having to copy `configs/default.yaml` from the repo.
+- **Powerlevel10k style is now actually applied.** When the interactive style selection (`lean` / `classic` / `rainbow` / `pure`) returns, the corresponding `p10k-{style}.zsh` is copied to `~/.p10k.zsh` and a `source ~/.p10k.zsh` line is appended to `.zshrc` if missing. Existing `~/.p10k.zsh` is **never** overwritten — that's your hand-tuned config from `p10k configure`.
+- 6 additional default Oh-My-Zsh plugins: `colored-man-pages`, `colorize`, `brew`, `ssh-agent`, `pip`, `python`.
+- `.golangci.yml` for consistent linting; `make lint` now passes with 0 issues.
+- `.github/dependabot.yml` for weekly Go module + GitHub Actions bumps.
+- Unit tests for semver comparison (`versioncheck_test.go`) and plugin merge logic (`ohmyzsh_test.go`).
+- `CLAUDE.md` developer guide covering architecture, safety invariants, and prompt/spinner rules.
+
+### Changed
+- **Plugin configuration is now MERGED, not replaced.** `setup-mac install --terminal` previously overwrote the entire `plugins=(…)` line in `.zshrc`, silently wiping plugins the user had added by hand. Now it parses the existing line, unions with the configured list, and only writes if anything actually changed.
+- **Single source of truth for defaults.** The embedded default config now lives at `configs/default.yaml` only (was duplicated with `internal/config/defaults.yaml`, which had drifted out of sync). The `dist/` tarball and the embedded binary now ship identical defaults.
+- **Embedded defaults match the `configs/default.yaml` shipped in `dist/`**: `eza`, `yq`, `wget`, `curl` are back in formulae and the default `ll`/`la`/`lt` aliases now use `eza --icons`.
+- **`git` IsInstalled** now correctly reports installed in `setup-mac status` when global `user.name` AND `user.email` are configured (was hardcoded to `false` — git always showed `✗`).
+- **Per-item failures propagate.** `configureAliases` / `configureSettings` (git) and `applyDefaults` (macos) now accumulate per-item errors via `errors.Join` and return them. The install summary no longer reports "completed successfully" when half the config silently failed.
+
+### Fixed
+- **Confirm prompt accepted Enter as "no".** `promptui.IsConfirm` ignored the `Default` field and treated Enter as `ErrAbort`, so `Proceed with installation? [Y/n]` + Enter aborted the install. Replaced with a `bufio` reader: Enter respects the default, invalid input re-prompts, and stray characters don't leak into the next prompt.
+- **Version comparison was lexicographic.** `1.0.10` was reported as older than `1.0.9` because string compare ranks `"1" < "9"`. Now compares numeric segments per SemVer 2.0 (with pre-release suffix handling).
+- **Powerlevel10k `MkdirAll` bypassed `--dry-run`** and created `~/.oh-my-zsh/custom/themes/` even when the user only wanted a preview. Now properly guarded.
+- **22 pre-existing `errcheck` lint warnings**: real I/O issues (`resp.Body.Close`, `os.Setenv`) properly handled, `fmt`/`color.Color` print returns excluded by config.
+
+### Removed
+- `internal/config/defaults.yaml` (consolidated into `configs/default.yaml` — see Changed).
+
 ## [1.0.1] - 2026-01-31
 
 ### Added
@@ -67,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Embedded default configuration
 - Colorful terminal output with spinners
 
-[Unreleased]: https://github.com/tldr-it-stepankutaj/setup-mac/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/tldr-it-stepankutaj/setup-mac/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/tldr-it-stepankutaj/setup-mac/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/tldr-it-stepankutaj/setup-mac/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/tldr-it-stepankutaj/setup-mac/releases/tag/v1.0.0

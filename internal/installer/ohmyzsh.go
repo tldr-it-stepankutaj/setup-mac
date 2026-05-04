@@ -140,49 +140,122 @@ func (o *OhMyZshInstaller) installPlugins(ctx context.Context, homeDir string, p
 	return nil
 }
 
+// configurePlugins makes sure every plugin in `plugins` is present in the
+// `plugins=(…)` line of the user's .zshrc. It MERGES rather than replaces:
+// any plugin the user added by hand (or via another tool) is preserved.
+// This was once a destructive overwrite that silently wiped user's extra
+// plugins on every install run — see CLAUDE.md.
 func (o *OhMyZshInstaller) configurePlugins(ctx context.Context, homeDir string, plugins []string) error {
 	zshrcPath := filepath.Join(homeDir, ".zshrc")
 
 	if o.ctx.DryRun {
-		ui.PrintDryRun(fmt.Sprintf("Would configure plugins in %s: %v", zshrcPath, plugins))
+		ui.PrintDryRun(fmt.Sprintf("Would ensure plugins in %s contain: %v", zshrcPath, plugins))
 		return nil
 	}
 
-	// Read current .zshrc
 	content, err := os.ReadFile(zshrcPath)
 	if err != nil {
 		return fmt.Errorf("failed to read .zshrc: %w", err)
 	}
 
-	// Build plugins line
-	pluginsLine := fmt.Sprintf("plugins=(%s)", strings.Join(plugins, " "))
-
-	// Replace existing plugins line or add it
 	lines := strings.Split(string(content), "\n")
 	found := false
 	for i, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), "plugins=") {
-			lines[i] = pluginsLine
-			found = true
-			break
+		if !strings.HasPrefix(strings.TrimSpace(line), "plugins=") {
+			continue
 		}
+		found = true
+
+		existing, ok := parsePluginsLine(line)
+		if !ok {
+			// Multi-line `plugins=(\n  git\n  docker\n)` form. Touching it would
+			// risk corrupting it; better to tell the user what's missing.
+			missing := diffPluginLists(plugins, nil)
+			ui.PrintWarning(fmt.Sprintf(
+				"Multi-line plugins=(...) detected in .zshrc; not modified. Add these manually if desired: %v",
+				missing))
+			return nil
+		}
+
+		merged := mergePluginLists(existing, plugins)
+		added := diffPluginLists(merged, existing)
+
+		if len(added) == 0 {
+			ui.PrintInfo(fmt.Sprintf("Plugins already configured (%d entries) — no changes", len(existing)))
+			return nil
+		}
+
+		lines[i] = fmt.Sprintf("plugins=(%s)", strings.Join(merged, " "))
+		ui.PrintSuccess(fmt.Sprintf("Added to .zshrc plugins: %v (kept %d existing)", added, len(existing)))
+		break
 	}
 
 	if !found {
-		// Add plugins line before source oh-my-zsh.sh
+		// Insert a fresh `plugins=(…)` line right before `source $ZSH/oh-my-zsh.sh`.
+		pluginsLine := fmt.Sprintf("plugins=(%s)", strings.Join(plugins, " "))
 		for i, line := range lines {
 			if strings.Contains(line, "source $ZSH/oh-my-zsh.sh") {
 				lines = append(lines[:i], append([]string{pluginsLine, ""}, lines[i:]...)...)
 				break
 			}
 		}
+		ui.PrintSuccess(fmt.Sprintf("Configured plugins: %v", plugins))
 	}
 
-	// Write back
 	if err := os.WriteFile(zshrcPath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
 		return fmt.Errorf("failed to write .zshrc: %w", err)
 	}
-
-	ui.PrintSuccess(fmt.Sprintf("Configured plugins: %v", plugins))
 	return nil
+}
+
+// parsePluginsLine extracts plugin names from a single-line
+// `plugins=(a b c)` shell statement. Returns ok=false for multi-line forms
+// or anything that doesn't look like a single-line plugins assignment.
+func parsePluginsLine(line string) (plugins []string, ok bool) {
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(trimmed, "plugins=(") {
+		return nil, false
+	}
+	inner := strings.TrimPrefix(trimmed, "plugins=(")
+	if !strings.HasSuffix(inner, ")") {
+		return nil, false
+	}
+	inner = strings.TrimSuffix(inner, ")")
+	return strings.Fields(inner), true
+}
+
+// mergePluginLists returns the union of existing and extras, preserving
+// the order of existing entries and appending any new ones from extras
+// in their original order.
+func mergePluginLists(existing, extras []string) []string {
+	seen := make(map[string]bool, len(existing)+len(extras))
+	out := make([]string, 0, len(existing)+len(extras))
+	for _, p := range existing {
+		if !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	for _, p := range extras {
+		if !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// diffPluginLists returns elements of `a` that are not in `b`, preserving order.
+func diffPluginLists(a, b []string) []string {
+	bSet := make(map[string]bool, len(b))
+	for _, p := range b {
+		bSet[p] = true
+	}
+	out := make([]string, 0, len(a))
+	for _, p := range a {
+		if !bSet[p] {
+			out = append(out, p)
+		}
+	}
+	return out
 }

@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -28,9 +29,19 @@ func (g *GitInstaller) Description() string {
 	return "Git Configuration"
 }
 
-// IsInstalled returns false (Git config is always "installable")
+// IsInstalled reports whether Git already has both user.name and user.email
+// configured globally. Returning true here lets `setup-mac status` show ✓ and
+// lets the install runner skip re-prompting the user on every run.
+//
+// Note: this only checks the user identity (the bit we'd otherwise prompt for).
+// Aliases and settings from the config will be re-applied on every explicit
+// install run, which is intentional — `git config` is idempotent.
 func (g *GitInstaller) IsInstalled(ctx context.Context) bool {
-	return false
+	if !g.ctx.Executor.Exists("git") {
+		return false
+	}
+	return g.getExistingConfig(ctx, "user.name") != "" &&
+		g.getExistingConfig(ctx, "user.email") != ""
 }
 
 // Install configures Git
@@ -143,22 +154,26 @@ func (g *GitInstaller) getExistingConfig(ctx context.Context, key string) string
 }
 
 func (g *GitInstaller) configureAliases(ctx context.Context) error {
+	var errs []error
 	for alias, command := range g.ctx.Config.Git.Aliases {
 		key := fmt.Sprintf("alias.%s", alias)
 		if err := g.setConfig(ctx, key, command); err != nil {
 			ui.PrintWarning(fmt.Sprintf("Failed to set alias %s: %v", alias, err))
+			errs = append(errs, fmt.Errorf("alias %s: %w", alias, err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (g *GitInstaller) configureSettings(ctx context.Context) error {
+	var errs []error
 	for key, value := range g.ctx.Config.Git.Settings {
 		if err := g.setConfig(ctx, key, value); err != nil {
 			ui.PrintWarning(fmt.Sprintf("Failed to set %s: %v", key, err))
+			errs = append(errs, fmt.Errorf("%s: %w", key, err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (g *GitInstaller) setConfig(ctx context.Context, key, value string) error {

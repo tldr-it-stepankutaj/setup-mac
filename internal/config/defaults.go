@@ -1,6 +1,5 @@
 package config
 
-import _ "embed"
+import "github.com/tldr-it-stepankutaj/setup-mac/configs"
 
-//go:embed defaults.yaml
-var DefaultConfig string
+var DefaultConfig = configs.Default

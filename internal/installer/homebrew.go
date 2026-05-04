@@ -102,10 +102,12 @@ func (h *HomebrewInstaller) installHomebrew(ctx context.Context) error {
 		return err
 	}
 
-	// Add brew to PATH for current session
+	// Add brew to PATH for current session so subsequent `brew install` calls
+	// in this run can find it. os.Setenv only fails if the key/value is invalid
+	// (no NULs), so we ignore the return.
 	brewPath := h.getBrewPath()
 	if _, err := os.Stat(brewPath); err == nil {
-		os.Setenv("PATH", fmt.Sprintf("%s:%s", brewPath, os.Getenv("PATH")))
+		_ = os.Setenv("PATH", fmt.Sprintf("%s:%s", brewPath, os.Getenv("PATH")))
 	}
 
 	return nil

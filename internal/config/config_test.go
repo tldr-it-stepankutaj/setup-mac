@@ -40,12 +40,12 @@ func TestLoadDefault(t *testing.T) {
 		t.Error("expected macos.configure to be true")
 	}
 
-	if !cfg.Git.Configure {
-		t.Error("expected git.configure to be true")
+	if cfg.Git.Configure {
+		t.Error("expected git.configure to be false (opt-in)")
 	}
 
-	if !cfg.SSH.GenerateKey {
-		t.Error("expected ssh.generate_key to be true")
+	if cfg.SSH.GenerateKey {
+		t.Error("expected ssh.generate_key to be false (opt-in)")
 	}
 }
 

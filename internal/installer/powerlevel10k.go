@@ -101,20 +101,79 @@ func (p *Powerlevel10kInstaller) Install(ctx context.Context) error {
 	}
 
 	if style != "" {
-		ui.PrintInfo(fmt.Sprintf("Selected style: %s", style))
-		ui.PrintInfo("Run 'p10k configure' to customize your prompt after installation")
+		if err := p.applyStyle(ctx, homeDir, style); err != nil {
+			return fmt.Errorf("failed to apply style: %w", err)
+		}
 	}
 
 	return nil
+}
+
+// applyStyle persists the chosen Powerlevel10k preset to ~/.p10k.zsh and
+// makes sure the user's .zshrc sources it. Existing ~/.p10k.zsh is never
+// overwritten — that file is the user's customized prompt and is what
+// `p10k configure` itself produces.
+func (p *Powerlevel10kInstaller) applyStyle(ctx context.Context, homeDir, style string) error {
+	srcConfig := filepath.Join(homeDir, ".oh-my-zsh", "custom", "themes",
+		"powerlevel10k", "config", fmt.Sprintf("p10k-%s.zsh", style))
+	dstConfig := filepath.Join(homeDir, ".p10k.zsh")
+
+	if _, err := os.Stat(dstConfig); err == nil {
+		ui.PrintInfo(fmt.Sprintf("~/.p10k.zsh already exists — keeping it (style %q not applied)", style))
+	} else {
+		if _, err := p.ctx.Executor.Run(ctx, "cp", srcConfig, dstConfig); err != nil {
+			return fmt.Errorf("copy %s -> %s: %w", srcConfig, dstConfig, err)
+		}
+		if !p.ctx.DryRun {
+			ui.PrintSuccess(fmt.Sprintf("Applied Powerlevel10k style: %s", style))
+		}
+	}
+
+	return p.ensureP10kSourceLine(homeDir)
+}
+
+// ensureP10kSourceLine appends the canonical `source ~/.p10k.zsh` snippet
+// to .zshrc if it isn't there yet. Idempotent.
+func (p *Powerlevel10kInstaller) ensureP10kSourceLine(homeDir string) error {
+	zshrcPath := filepath.Join(homeDir, ".zshrc")
+	const sourceLine = `[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh`
+
+	if p.ctx.DryRun {
+		ui.PrintDryRun(fmt.Sprintf("Would ensure %q is in %s", sourceLine, zshrcPath))
+		return nil
+	}
+
+	content, err := os.ReadFile(zshrcPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return os.WriteFile(zshrcPath, []byte(sourceLine+"\n"), 0644)
+		}
+		return err
+	}
+
+	if strings.Contains(string(content), "source ~/.p10k.zsh") {
+		return nil
+	}
+
+	out := string(content)
+	if !strings.HasSuffix(out, "\n") {
+		out += "\n"
+	}
+	out += "\n# Powerlevel10k prompt config (managed by setup-mac)\n" + sourceLine + "\n"
+	return os.WriteFile(zshrcPath, []byte(out), 0644)
 }
 
 func (p *Powerlevel10kInstaller) installPowerlevel10k(ctx context.Context, homeDir string) error {
 	themesDir := filepath.Join(homeDir, ".oh-my-zsh", "custom", "themes")
 	p10kDir := filepath.Join(themesDir, "powerlevel10k")
 
-	// Ensure themes directory exists
-	if err := os.MkdirAll(themesDir, 0755); err != nil {
-		return fmt.Errorf("failed to create themes directory: %w", err)
+	// Ensure themes directory exists. Skip in dry-run so --dry-run truly
+	// makes no on-disk changes (was previously creating ~/.oh-my-zsh/custom/themes
+	// even when the user only wanted a preview).
+	if !p.ctx.DryRun {
+		if err := os.MkdirAll(themesDir, 0755); err != nil {
+			return fmt.Errorf("failed to create themes directory: %w", err)
+		}
 	}
 
 	spinner := ui.NewSpinner("Cloning Powerlevel10k repository...")

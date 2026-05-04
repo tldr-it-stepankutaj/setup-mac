@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -64,7 +65,7 @@ func (v *VersionChecker) CheckForUpdate(ctx context.Context) (*GitHubRelease, bo
 	if err != nil {
 		return nil, false, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, false, fmt.Errorf("github API returned status %d", resp.StatusCode)
@@ -85,27 +86,59 @@ func (v *VersionChecker) CheckForUpdate(ctx context.Context) (*GitHubRelease, bo
 	return &release, isNewer, nil
 }
 
-// isNewerVersion compares semantic versions
+// isNewerVersion reports whether `latest` is a strictly newer semver than `current`.
+//
+// Strings may include a leading "v" and an optional pre-release suffix
+// (e.g. "1.2.3-rc1"). The numeric segments are compared numerically — the
+// previous lexicographic compare incorrectly ranked "1.0.10" below "1.0.9".
+// Per SemVer 2.0, any pre-release version is considered older than the same
+// version without a pre-release suffix.
 func (v *VersionChecker) isNewerVersion(latest, current string) bool {
-	// Handle development versions
+	// Don't suggest updates for dev builds
 	if current == "" || current == "dev" || strings.Contains(current, "dirty") {
-		return false // Don't suggest updates for dev builds
+		return false
 	}
 
-	// Simple string comparison for now
-	// For proper semver, we'd use a library
-	latestParts := strings.Split(latest, ".")
-	currentParts := strings.Split(current, ".")
+	latestNums, latestPre := splitVersion(latest)
+	currentNums, currentPre := splitVersion(current)
 
-	for i := 0; i < len(latestParts) && i < len(currentParts); i++ {
-		if latestParts[i] > currentParts[i] {
-			return true
-		} else if latestParts[i] < currentParts[i] {
-			return false
+	for i := 0; i < len(latestNums) || i < len(currentNums); i++ {
+		var l, c int
+		if i < len(latestNums) {
+			l = latestNums[i]
+		}
+		if i < len(currentNums) {
+			c = currentNums[i]
+		}
+		if l != c {
+			return l > c
 		}
 	}
 
-	return len(latestParts) > len(currentParts)
+	// Numeric segments equal: a release outranks any pre-release of the same version.
+	if latestPre == "" && currentPre != "" {
+		return true
+	}
+	if latestPre != "" && currentPre == "" {
+		return false
+	}
+	return latestPre > currentPre
+}
+
+// splitVersion parses a version like "v1.2.3-rc1" into its numeric segments
+// and pre-release suffix. Non-numeric segments are treated as zero so a
+// malformed remote tag never crashes the update check.
+func splitVersion(s string) (nums []int, pre string) {
+	s = strings.TrimPrefix(s, "v")
+	if i := strings.IndexAny(s, "-+"); i >= 0 {
+		pre = s[i+1:]
+		s = s[:i]
+	}
+	for _, part := range strings.Split(s, ".") {
+		n, _ := strconv.Atoi(part)
+		nums = append(nums, n)
+	}
+	return nums, pre
 }
 
 // GetDownloadURL returns the download URL for the current platform
