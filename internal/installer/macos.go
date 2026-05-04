@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -42,22 +43,27 @@ func (m *MacOSInstaller) Install(ctx context.Context) error {
 		return nil
 	}
 
+	var errs []error
+
 	// Configure Dock
 	ui.PrintStep("Configuring Dock...")
 	if err := m.configureDock(ctx); err != nil {
 		ui.PrintWarning(fmt.Sprintf("Some Dock settings failed: %v", err))
+		errs = append(errs, fmt.Errorf("dock: %w", err))
 	}
 
 	// Configure Finder
 	ui.PrintStep("Configuring Finder...")
 	if err := m.configureFinder(ctx); err != nil {
 		ui.PrintWarning(fmt.Sprintf("Some Finder settings failed: %v", err))
+		errs = append(errs, fmt.Errorf("finder: %w", err))
 	}
 
 	// Configure Keyboard
 	ui.PrintStep("Configuring Keyboard...")
 	if err := m.configureKeyboard(ctx); err != nil {
 		ui.PrintWarning(fmt.Sprintf("Some Keyboard settings failed: %v", err))
+		errs = append(errs, fmt.Errorf("keyboard: %w", err))
 	}
 
 	// Restart affected apps
@@ -66,7 +72,7 @@ func (m *MacOSInstaller) Install(ctx context.Context) error {
 		m.restartApps(ctx)
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 func (m *MacOSInstaller) configureDock(ctx context.Context) error {
@@ -149,6 +155,7 @@ func (m *MacOSInstaller) applyDefaults(ctx context.Context, defaults []struct {
 	typ    string
 	value  string
 }) error {
+	var errs []error
 	for _, d := range defaults {
 		var args []string
 		switch d.typ {
@@ -170,6 +177,7 @@ func (m *MacOSInstaller) applyDefaults(ctx context.Context, defaults []struct {
 		result, err := m.ctx.Executor.Run(ctx, "defaults", args...)
 		if err != nil {
 			ui.PrintWarning(fmt.Sprintf("Failed to set %s %s: %v", d.domain, d.key, err))
+			errs = append(errs, fmt.Errorf("%s %s: %w", d.domain, d.key, err))
 			continue
 		}
 
@@ -178,7 +186,7 @@ func (m *MacOSInstaller) applyDefaults(ctx context.Context, defaults []struct {
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 func (m *MacOSInstaller) restartApps(ctx context.Context) {

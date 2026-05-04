@@ -13,15 +13,17 @@ CLI tool for automating macOS developer environment setup.
 - **Xcode Command Line Tools** - Automatically installs if missing
 - **Rosetta 2** - Installs on Apple Silicon Macs for x86 compatibility
 - **Homebrew** - Install Homebrew, formulae, casks, and taps
-- **Oh-My-Zsh** - Install with plugins (zsh-autosuggestions, zsh-syntax-highlighting)
-- **Powerlevel10k** - Theme with interactive style selection
+- **Oh-My-Zsh** - Install with plugins; **plugin list is merged** into your existing `.zshrc` instead of overwriting it, so anything you added by hand is preserved
+- **Powerlevel10k** - Theme installation; if you pick a starter style (`lean` / `classic` / `rainbow` / `pure`) it's actually written to `~/.p10k.zsh` (existing files are never overwritten)
 - **Shell Config** - Aliases, environment variables, .zshrc customization
 - **macOS Defaults** - Dock, Finder, Keyboard settings
-- **Git Config** - User info (interactive prompt), aliases, settings
+- **Git Config** - User info (interactive prompt, reuses existing `git config` values as defaults), aliases, settings
 - **SSH Key** - Generate ed25519 key
 - **Network Check** - Verifies internet connectivity before installation
 - **Progress Indication** - Shows [1/9], [2/9], etc. during installation
-- **Auto-Update Check** - Notifies when new version is available on GitHub
+- **Auto-Update Check** - Notifies when new version is available on GitHub (proper SemVer comparison — `1.0.10` is correctly newer than `1.0.9`)
+- **Config bootstrap** - `setup-mac config init` writes the embedded default config to `~/.config/setup-mac/config.yaml` for you to edit
+- **Shell completions** - `setup-mac completion {bash,zsh,fish,powershell}` (auto-registered by Cobra)
 
 ## Installation
 
@@ -77,6 +79,8 @@ setup-mac install --all
 | `status` | Show installation status of all components |
 | `update` | Update installed tools (Homebrew, Oh-My-Zsh) |
 | `validate` | Validate configuration file |
+| `config init` | Write the default config to `~/.config/setup-mac/config.yaml` |
+| `completion` | Generate shell completion scripts (bash, zsh, fish, powershell) |
 | `version` | Print version information |
 
 ### Install Options
@@ -115,6 +119,32 @@ setup-mac update --all --dry-run
 ```bash
 setup-mac install --all --config my-config.yaml
 setup-mac validate --config my-config.yaml
+```
+
+### Bootstrapping a config to edit
+
+Instead of copying the embedded default by hand, let setup-mac write it for you:
+
+```bash
+# Default location: ~/.config/setup-mac/config.yaml
+setup-mac config init
+
+# Or pick a destination
+setup-mac config init --output ./my-setup.yaml
+
+# Overwrite an existing one
+setup-mac config init --force
+```
+
+### Shell completion
+
+Cobra auto-registers a `completion` subcommand. For zsh:
+
+```bash
+setup-mac completion zsh > "${fpath[1]}/_setup-mac"
+# bash:        setup-mac completion bash > /usr/local/etc/bash_completion.d/setup-mac
+# fish:        setup-mac completion fish > ~/.config/fish/completions/setup-mac.fish
+# powershell:  setup-mac completion powershell > ...
 ```
 
 ### Auto-Update Check
@@ -179,12 +209,12 @@ Validating embedded default config
 
 Configuration Summary
 ──────────────────────────────────────
-  Homebrew:      enabled (11 formulae, 5 casks, 1 taps)
-  Oh My Zsh:     enabled (6 plugins)
+  Homebrew:      enabled (12 formulae, 5 casks, 1 taps)
+  Oh My Zsh:     enabled (12 plugins)
   Powerlevel10k: enabled
   Git:           enabled (user: )
   SSH:           enabled (type: ed25519)
-  Shell:         13 aliases, 4 env vars
+  Shell:         14 aliases, 4 env vars
   macOS:         enabled
 
 Warnings
@@ -292,6 +322,8 @@ Configuration is in YAML format. The tool includes sensible defaults, but you ca
 
 ### Example Configuration
 
+The snippet below mirrors the embedded defaults you get with `setup-mac config init`.
+
 ```yaml
 version: "1.0"
 
@@ -310,38 +342,57 @@ homebrew:
     - fzf
     - ripgrep
     - bat
+    - eza
     - jq
+    - yq
     - htop
     - tree
+    - wget
+    - curl
   casks:
     - iterm2
     - visual-studio-code
     - docker
     - rectangle
+    - font-meslo-lg-nerd-font
 
 terminal:
   oh_my_zsh:
     install: true
+    theme: powerlevel10k/powerlevel10k
+    # Plugins are MERGED into your existing ~/.zshrc plugins=(...) line —
+    # plugins you added by hand are preserved, only missing ones are appended.
     plugins:
       - git
       - docker
+      - kubectl
       - fzf
       - zsh-autosuggestions
       - zsh-syntax-highlighting
+      - colored-man-pages
+      - colorize
+      - brew
+      - ssh-agent
+      - pip
+      - python
   powerlevel10k:
     install: true
+    style: ""   # "" = ask interactively (lean / classic / rainbow / pure)
 
 shell:
   aliases:
-    ll: "ls -la"
-    la: "ls -a"
-    lt: "tree"
+    ll: "eza -la --icons"
+    la: "eza -a --icons"
+    ls: "eza --icons"
+    lt: "eza --tree --icons"
     cat: "bat"
     gs: "git status"
     k: "kubectl"
   environment:
-    EDITOR: "code --wait"
+    EDITOR: "vim"
+    VISUAL: "code"
     LANG: "en_US.UTF-8"
+    LC_ALL: "en_US.UTF-8"
 
 macos:
   configure: true
@@ -422,13 +473,16 @@ make dry-run    # Build and run with --dry-run
 setup-mac/
 ├── cmd/setup-mac/main.go       # Entry point
 ├── internal/
-│   ├── cli/                    # Cobra commands (install, status, update, validate)
+│   ├── cli/                    # Cobra commands (install, status, update, validate, config)
 │   ├── config/                 # Configuration loading and schema
 │   ├── installer/              # Component installers
 │   ├── executor/               # Command execution with dry-run support
 │   └── ui/                     # Spinners, prompts, and output formatting
 ├── configs/
-│   └── default.yaml            # Default configuration
+│   ├── default.yaml            # Default configuration (single source of truth — embedded into the binary AND copied into dist/)
+│   └── embed.go                # `//go:embed default.yaml` shim
+├── CLAUDE.md                   # Notes for AI coding agents
+├── .golangci.yml
 ├── go.mod
 ├── Makefile
 └── README.md
