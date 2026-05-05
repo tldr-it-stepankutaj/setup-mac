@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-05-05
+
+### Added
+- **Auto-discovery of the user config.** Without `--config`, setup-mac now looks for `~/.config/setup-mac/config.yaml` (canonical name written by `setup-mac config init` and `make install`) and falls back to `~/.config/setup-mac/default.yaml` (the legacy name shipped by older release tarballs). The path actually loaded is printed as `ℹ Using config: …` in `install`/`update` and surfaced in `validate` output. Tests use `LoadDefault()` (embedded only) so a developer's real config doesn't leak into test results.
+- **Diagnostics on Xcode CLT failure.** `xcode-select --install` now runs through `Run` (not `RunInteractive`) so stderr is captured. On failure or 30-minute timeout the installer prints macOS version (`sw_vers`), the verbatim `xcode-select` error, and actionable fixes — `softwareupdate -l` / `sudo softwareupdate -ia`, link to full Xcode in the App Store, and the manual retry command. The "not currently available from the Software Update server" failure (macOS too old for Apple's current CLT build) is detected and called out explicitly.
+
+### Changed
+- **Dist Makefile (`make dist` and `.github/workflows/build.yml`) writes `~/.config/setup-mac/config.yaml`** instead of `default.yaml`, and is now idempotent — if the file already exists the install target prints `Keeping existing …` and does not overwrite it. Previously every `make install` from a fresh tarball clobbered any edits the user had made.
+- **Skip-on-disabled no longer lies about success.** Installers that bail out at the top because of a config flag (`Install: false`, `Configure: false`, `GenerateKey: false`) now return `installer.ErrSkipped`; the runner suppresses the misleading `✓ <name> installed successfully` line. Affects `git`, `homebrew`, `oh-my-zsh`, `powerlevel10k`, `macos`, `ssh`.
+
+### Fixed
+- **User config under `~/.config/setup-mac/` was being ignored.** Without an explicit `--config` flag the tool fell back to embedded defaults (which have `git.configure: false`, `ssh.generate_key: false`, etc.), so e.g. `setup-mac install --git` against a user config with `git.configure: true` printed "Git configuration skipped (disabled in config)" — and then falsely "git installed successfully" right after. Auto-discovery (see Added) plus `ErrSkipped` (see Changed) fix both halves of the bug.
+
 ## [1.0.2] - 2026-05-04
 
 ### Added

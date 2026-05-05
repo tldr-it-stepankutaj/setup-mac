@@ -43,6 +43,8 @@ make install
 sudo cp bin/setup-mac /usr/local/bin/
 ```
 
+The bundled `make install` writes `~/.config/setup-mac/config.yaml` only if it doesn't already exist, so re-running it on an upgrade won't overwrite the file you've been editing.
+
 ### From Source
 
 Requirements:
@@ -114,6 +116,15 @@ setup-mac install --all --dry-run
 setup-mac update --all --dry-run
 ```
 
+### Configuration auto-discovery
+
+When `--config` isn't passed, setup-mac looks in `~/.config/setup-mac/` for:
+
+1. `config.yaml` — canonical name written by `setup-mac config init` and by `make install` from the release tarball
+2. `default.yaml` — legacy name from older releases, still accepted
+
+The path actually loaded is printed as `ℹ Using config: …` so you can tell which file drove the run. Pass `--config <path>` to override.
+
 ### Custom Configuration
 
 ```bash
@@ -128,6 +139,9 @@ Instead of copying the embedded default by hand, let setup-mac write it for you:
 ```bash
 # Default location: ~/.config/setup-mac/config.yaml
 setup-mac config init
+
+# After this, you don't need --config any more — auto-discovery will find it:
+setup-mac install --all
 
 # Or pick a destination
 setup-mac config init --output ./my-setup.yaml
@@ -334,27 +348,28 @@ settings:
 
 homebrew:
   install: true
-  taps:
-    - homebrew/cask-fonts
+  taps: []
   formulae:
     - git
     - gh
     - fzf
     - ripgrep
-    - bat
-    - eza
     - jq
     - yq
     - htop
     - tree
     - wget
     - curl
+    - python@3.14
+    - openjdk@21
+    - golang
   casks:
     - iterm2
     - visual-studio-code
-    - docker
     - rectangle
     - font-meslo-lg-nerd-font
+    - firefox
+    - vlc
 
 terminal:
   oh_my_zsh:
@@ -381,13 +396,18 @@ terminal:
 
 shell:
   aliases:
-    ll: "eza -la --icons"
-    la: "eza -a --icons"
-    ls: "eza --icons"
-    lt: "eza --tree --icons"
-    cat: "bat"
+    ll: "ls -la"
+    la: "ls -a"
+    lt: "ls -ltra"
     gs: "git status"
+    gp: "git pull"
+    gc: "git commit"
+    gco: "git checkout"
+    gd: "git diff"
     k: "kubectl"
+    kgp: "kubectl get pods"
+    kgs: "kubectl get svc"
+    dc: "docker-compose"
   environment:
     EDITOR: "vim"
     VISUAL: "code"
@@ -408,19 +428,27 @@ macos:
       disable_smart_quotes: true
 
 git:
-  configure: true
-  # user.name and user.email will be prompted interactively
+  configure: false   # opt-in: set to true and fill user.name/email, or pass --git
+  user:
+    name: ""
+    email: ""
   aliases:
     st: "status"
     co: "checkout"
+    br: "branch"
+    ci: "commit"
+    last: "log -1 HEAD"
     lg: "log --oneline --graph --decorate"
   settings:
     init.defaultBranch: "main"
     pull.rebase: "true"
+    push.autoSetupRemote: "true"
+    core.editor: "code --wait"
 
 ssh:
-  generate_key: true
+  generate_key: false   # opt-in
   key_type: "ed25519"
+  key_file: "~/.ssh/id_ed25519"
 ```
 
 ## Safety Features
@@ -481,7 +509,6 @@ setup-mac/
 ├── configs/
 │   ├── default.yaml            # Default configuration (single source of truth — embedded into the binary AND copied into dist/)
 │   └── embed.go                # `//go:embed default.yaml` shim
-├── CLAUDE.md                   # Notes for AI coding agents
 ├── .golangci.yml
 ├── go.mod
 ├── Makefile
