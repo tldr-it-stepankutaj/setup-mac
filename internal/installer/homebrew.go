@@ -47,7 +47,7 @@ func (h *HomebrewInstaller) Install(ctx context.Context) error {
 
 	if !cfg.Install {
 		ui.PrintInfo("Homebrew installation skipped (disabled in config)")
-		return nil
+		return ErrSkipped
 	}
 
 	// Install Homebrew if not present

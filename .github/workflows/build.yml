@@ -92,9 +92,13 @@ jobs:
           	@cp bin/$(BINARY_NAME) $(INSTALL_DIR)/
           	@chmod +x $(INSTALL_DIR)/$(BINARY_NAME)
           	@mkdir -p $(CONFIG_DIR)
-          	@cp configs/default.yaml $(CONFIG_DIR)/
+          	@if [ -f $(CONFIG_DIR)/config.yaml ]; then \
+          		echo "Keeping existing $(CONFIG_DIR)/config.yaml"; \
+          	else \
+          		cp configs/default.yaml $(CONFIG_DIR)/config.yaml; \
+          		echo "Default config copied to $(CONFIG_DIR)/config.yaml"; \
+          	fi
           	@echo "Installed $(BINARY_NAME) to $(INSTALL_DIR)"
-          	@echo "Default config copied to $(CONFIG_DIR)/default.yaml"
 
           uninstall:
           	@echo "Uninstalling $(BINARY_NAME)..."

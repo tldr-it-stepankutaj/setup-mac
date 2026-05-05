@@ -50,7 +50,7 @@ func (g *GitInstaller) Install(ctx context.Context) error {
 
 	if !cfg.Configure {
 		ui.PrintInfo("Git configuration skipped (disabled in config)")
-		return nil
+		return ErrSkipped
 	}
 
 	// Check if git is available

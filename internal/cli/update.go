@@ -64,9 +64,12 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load configuration
-	cfg, err := config.Load(cfgFile)
+	cfg, loadedPath, err := config.Load(cfgFile)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+	if loadedPath != "" {
+		ui.PrintInfo(fmt.Sprintf("Using config: %s", loadedPath))
 	}
 
 	// Override dry-run from flags

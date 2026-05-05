@@ -66,7 +66,7 @@ func (p *Powerlevel10kInstaller) Install(ctx context.Context) error {
 
 	if !cfg.Install {
 		ui.PrintInfo("Powerlevel10k installation skipped (disabled in config)")
-		return nil
+		return ErrSkipped
 	}
 
 	homeDir, err := os.UserHomeDir()

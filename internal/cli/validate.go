@@ -36,13 +36,6 @@ type ValidationResult struct {
 }
 
 func runValidate(cmd *cobra.Command, args []string) error {
-	if cfgFile != "" {
-		fmt.Printf("Validating config: %s\n", cfgFile)
-	} else {
-		fmt.Println("Validating embedded default config")
-	}
-	fmt.Println()
-
 	// Check if config file exists (for custom configs)
 	if cfgFile != "" {
 		if _, err := os.Stat(cfgFile); os.IsNotExist(err) {
@@ -51,12 +44,19 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Try to load the config
-	cfg, err := config.Load(cfgFile)
+	// Try to load the config — Load also auto-discovers ~/.config/setup-mac/.
+	cfg, loadedPath, err := config.Load(cfgFile)
 	if err != nil {
 		color.New(color.FgRed).Printf("✗ Configuration invalid: %v\n", err)
 		return fmt.Errorf("validation failed")
 	}
+
+	if loadedPath != "" {
+		fmt.Printf("Validating config: %s\n", loadedPath)
+	} else {
+		fmt.Println("Validating embedded default config")
+	}
+	fmt.Println()
 
 	// Perform detailed validation
 	result := validateConfig(cfg)

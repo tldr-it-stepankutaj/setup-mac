@@ -40,7 +40,7 @@ func (m *MacOSInstaller) Install(ctx context.Context) error {
 
 	if !cfg.Configure {
 		ui.PrintInfo("macOS defaults configuration skipped (disabled in config)")
-		return nil
+		return ErrSkipped
 	}
 
 	var errs []error

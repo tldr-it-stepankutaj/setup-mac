@@ -58,7 +58,7 @@ type SystemInfo struct {
 
 func runStatus(cmd *cobra.Command, args []string) error {
 	// Load configuration (to get proper context)
-	cfg, err := config.Load(cfgFile)
+	cfg, _, err := config.Load(cfgFile)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}

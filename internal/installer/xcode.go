@@ -81,19 +81,31 @@ func (x *XcodeInstaller) Install(ctx context.Context) error {
 		return nil
 	}
 
-	// Start the installation - this triggers a macOS dialog
-	err := x.ctx.Executor.RunInteractive(ctx, "xcode-select", "--install")
-	if err != nil {
-		// Check if it's because CLT is already installed (exit code 1 with specific message)
+	// Capture stdout/stderr — `xcode-select --install` writes errors there
+	// (e.g. "Can't install the software because it is not currently
+	// available from the Software Update server"), and `RunInteractive`
+	// would discard them so we couldn't surface anything actionable on
+	// failure. The actual installer UI is a macOS-level dialog, not a TTY,
+	// so we lose nothing by not piping stdin/stdout.
+	result, runErr := x.ctx.Executor.Run(ctx, "xcode-select", "--install")
+	if runErr != nil {
+		// `xcode-select --install` exits non-zero in two harmless cases:
+		// (1) CLT is already installed, (2) the dialog was successfully
+		// triggered. Re-check before treating the exit as a real failure.
 		if x.IsInstalled(ctx) {
 			ui.PrintInfo("Xcode Command Line Tools already installed")
 			return nil
 		}
-		// The command might "fail" but still show the dialog - check again after a moment
 		time.Sleep(2 * time.Second)
 		if x.IsInstalled(ctx) {
 			ui.PrintInfo("Xcode Command Line Tools already installed")
 			return nil
+		}
+		// Not installed and not in progress — diagnose so the user knows why.
+		stderr := strings.TrimSpace(result.Stderr)
+		if stderr != "" || result.ExitCode != 0 {
+			x.diagnoseFailure(ctx, stderr)
+			return fmt.Errorf("xcode-select --install failed: %s", firstLine(stderr))
 		}
 	}
 
@@ -102,6 +114,7 @@ func (x *XcodeInstaller) Install(ctx context.Context) error {
 	ui.PrintInfo("Please follow the installation dialog that appeared.")
 
 	if err := x.waitForInstallation(ctx); err != nil {
+		x.diagnoseFailure(ctx, "")
 		return err
 	}
 
@@ -137,4 +150,82 @@ func (x *XcodeInstaller) waitForInstallation(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+// diagnoseFailure prints actionable context after a failed CLT install. The
+// most common cause we've seen is a macOS that's too old for the latest CLT
+// build Apple's Software Update server is offering — `xcode-select --install`
+// reports "Can't install the software because it is not currently available
+// from the Software Update server" and exits without telling the user that
+// the fix is to run a system update first. Surface enough info that the
+// user can act on it without having to dig through Console.app.
+func (x *XcodeInstaller) diagnoseFailure(ctx context.Context, stderr string) {
+	fmt.Println()
+	ui.PrintError("Xcode Command Line Tools installation did not complete.")
+
+	if stderr != "" {
+		fmt.Println()
+		ui.PrintInfo("Output from xcode-select:")
+		for _, line := range strings.Split(stderr, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			fmt.Printf("    %s\n", line)
+		}
+	}
+
+	fmt.Println()
+	ui.PrintInfo("System info:")
+	if v := x.captureOutput(ctx, "sw_vers", "-productName"); v != "" {
+		fmt.Printf("    macOS:        %s\n", v)
+	}
+	if v := x.captureOutput(ctx, "sw_vers", "-productVersion"); v != "" {
+		fmt.Printf("    Version:      %s\n", v)
+	}
+	if v := x.captureOutput(ctx, "sw_vers", "-buildVersion"); v != "" {
+		fmt.Printf("    Build:        %s\n", v)
+	}
+
+	// Stderr containing this phrase is the canonical "macOS is too old for
+	// the CLT build Apple is offering today" failure mode.
+	tooOld := strings.Contains(strings.ToLower(stderr),
+		"not currently available from the software update server")
+
+	fmt.Println()
+	ui.PrintInfo("Common causes and fixes:")
+	if tooOld {
+		fmt.Println("    • Apple is no longer publishing a Command Line Tools build for this")
+		fmt.Println("      macOS version. Update macOS first, then re-run setup-mac.")
+		fmt.Println("        System Settings → General → Software Update")
+	}
+	fmt.Println("    • If a system update is pending, install it first:")
+	fmt.Println("        softwareupdate -l           # list available updates")
+	fmt.Println("        sudo softwareupdate -ia     # install all available updates")
+	fmt.Println("    • As a fallback, install the full Xcode from the App Store:")
+	fmt.Println("        https://apps.apple.com/app/xcode/id497799835")
+	fmt.Println("    • To install CLT manually after the OS is up to date:")
+	fmt.Println("        xcode-select --install")
+	fmt.Println()
+}
+
+// captureOutput runs a command and returns its trimmed stdout, or "" on error.
+// Used for diagnostics where a failure to capture is itself non-fatal.
+func (x *XcodeInstaller) captureOutput(ctx context.Context, name string, args ...string) string {
+	result, err := x.ctx.Executor.Run(ctx, name, args...)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(result.Stdout)
+}
+
+// firstLine returns the first non-empty line of s, useful for boiling down a
+// multi-line stderr into a single-line error message.
+func firstLine(s string) string {
+	for _, line := range strings.Split(s, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			return line
+		}
+	}
+	return s
 }

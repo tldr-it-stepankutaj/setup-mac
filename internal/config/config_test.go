@@ -69,7 +69,7 @@ homebrew:
 		t.Fatalf("failed to write test config: %v", err)
 	}
 
-	cfg, err := Load(configPath)
+	cfg, _, err := Load(configPath)
 	if err != nil {
 		t.Fatalf("failed to load custom config: %v", err)
 	}
@@ -96,7 +96,7 @@ homebrew:
 }
 
 func TestLoadNonExistentConfig(t *testing.T) {
-	_, err := Load("/nonexistent/config.yaml")
+	_, _, err := Load("/nonexistent/config.yaml")
 	if err == nil {
 		t.Error("expected error for non-existent config")
 	}

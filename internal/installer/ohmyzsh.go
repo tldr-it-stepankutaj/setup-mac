@@ -54,7 +54,7 @@ func (o *OhMyZshInstaller) Install(ctx context.Context) error {
 
 	if !cfg.Install {
 		ui.PrintInfo("Oh-My-Zsh installation skipped (disabled in config)")
-		return nil
+		return ErrSkipped
 	}
 
 	homeDir, err := os.UserHomeDir()

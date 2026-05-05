@@ -2,12 +2,19 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/tldr-it-stepankutaj/setup-mac/internal/config"
 	"github.com/tldr-it-stepankutaj/setup-mac/internal/executor"
 	"github.com/tldr-it-stepankutaj/setup-mac/internal/ui"
 )
+
+// ErrSkipped is returned by Installer.Install when the installer chose not to
+// run — e.g. the component is disabled in config. The runner treats this as
+// neither success nor failure: the installer has already printed its own
+// "skipped" message, so we suppress both the success line and the error.
+var ErrSkipped = errors.New("installation skipped")
 
 // Installer defines the interface for all installers
 type Installer interface {
@@ -138,6 +145,10 @@ func RunInstallerWithProgress(ctx context.Context, installer Installer, ictx *Co
 	// Don't use spinner here - installers may have interactive prompts
 	// Each installer manages its own output and spinners
 	err := installer.Install(ctx)
+	if errors.Is(err, ErrSkipped) {
+		// Installer already printed its own skip reason — don't claim success.
+		return nil
+	}
 	if err != nil {
 		ui.PrintError(fmt.Sprintf("Failed to install %s: %v", installer.Name(), err))
 		return err

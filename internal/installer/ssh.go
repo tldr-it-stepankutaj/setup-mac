@@ -43,7 +43,7 @@ func (s *SSHInstaller) Install(ctx context.Context) error {
 
 	if !cfg.GenerateKey {
 		ui.PrintInfo("SSH key generation skipped (disabled in config)")
-		return nil
+		return ErrSkipped
 	}
 
 	keyFile := s.expandKeyPath(cfg.KeyFile)

@@ -116,9 +116,13 @@ dist: clean build-release
 		printf '\t@cp bin/$$(BINARY_NAME) $$(INSTALL_DIR)/\n' >> dist/$$DIST_NAME/Makefile; \
 		printf '\t@chmod +x $$(INSTALL_DIR)/$$(BINARY_NAME)\n' >> dist/$$DIST_NAME/Makefile; \
 		printf '\t@mkdir -p $$(CONFIG_DIR)\n' >> dist/$$DIST_NAME/Makefile; \
-		printf '\t@cp configs/default.yaml $$(CONFIG_DIR)/\n' >> dist/$$DIST_NAME/Makefile; \
+		printf '\t@if [ -f $$(CONFIG_DIR)/config.yaml ]; then \\\n' >> dist/$$DIST_NAME/Makefile; \
+		printf '\t\techo "Keeping existing $$(CONFIG_DIR)/config.yaml"; \\\n' >> dist/$$DIST_NAME/Makefile; \
+		printf '\telse \\\n' >> dist/$$DIST_NAME/Makefile; \
+		printf '\t\tcp configs/default.yaml $$(CONFIG_DIR)/config.yaml; \\\n' >> dist/$$DIST_NAME/Makefile; \
+		printf '\t\techo "Default config copied to $$(CONFIG_DIR)/config.yaml"; \\\n' >> dist/$$DIST_NAME/Makefile; \
+		printf '\tfi\n' >> dist/$$DIST_NAME/Makefile; \
 		printf '\t@echo "Installed $$(BINARY_NAME) to $$(INSTALL_DIR)"\n' >> dist/$$DIST_NAME/Makefile; \
-		printf '\t@echo "Default config copied to $$(CONFIG_DIR)/default.yaml"\n' >> dist/$$DIST_NAME/Makefile; \
 		echo '' >> dist/$$DIST_NAME/Makefile; \
 		echo 'uninstall:' >> dist/$$DIST_NAME/Makefile; \
 		printf '\t@echo "Uninstalling $$(BINARY_NAME)..."\n' >> dist/$$DIST_NAME/Makefile; \
