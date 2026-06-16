@@ -111,7 +111,7 @@ jobs:
           tar -czvf $DIST_NAME.tar.gz $DIST_NAME
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: setup-mac-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/setup-mac-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
