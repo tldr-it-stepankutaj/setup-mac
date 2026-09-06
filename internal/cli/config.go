@@ -52,14 +52,23 @@ func init() {
 	configInitCmd.Flags().StringVarP(&configInitPath, "output", "o", "", "destination path (default ~/.config/setup-mac/config.yaml)")
 }
 
+// resolveConfigDest returns path if non-empty, otherwise the default
+// ~/.config/setup-mac/config.yaml location.
+func resolveConfigDest(path string) (string, error) {
+	if path != "" {
+		return path, nil
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve home directory: %w", err)
+	}
+	return filepath.Join(homeDir, ".config", "setup-mac", "config.yaml"), nil
+}
+
 func runConfigInit(cmd *cobra.Command, args []string) error {
-	dest := configInitPath
-	if dest == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("failed to resolve home directory: %w", err)
-		}
-		dest = filepath.Join(homeDir, ".config", "setup-mac", "config.yaml")
+	dest, err := resolveConfigDest(configInitPath)
+	if err != nil {
+		return err
 	}
 
 	if _, err := os.Stat(dest); err == nil && !configInitForce {

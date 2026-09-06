@@ -101,3 +101,38 @@ func TestLoadNonExistentConfig(t *testing.T) {
 		t.Error("expected error for non-existent config")
 	}
 }
+
+// TestLoadPreservesMapKeyCase guards against a regression to the old
+// viper-backed loader, which silently lowercased every map key — turning
+// shell.environment.EDITOR into "editor", which no shell ever reads.
+func TestLoadPreservesMapKeyCase(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.yaml")
+
+	configContent := `
+shell:
+  environment:
+    EDITOR: "nvim"
+    CUSTOM_VAR: "value"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	cfg, _, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("failed to load custom config: %v", err)
+	}
+
+	if got := cfg.Shell.Environment["EDITOR"]; got != "nvim" {
+		t.Errorf("expected EDITOR=nvim, got Environment=%#v", cfg.Shell.Environment)
+	}
+	if got := cfg.Shell.Environment["CUSTOM_VAR"]; got != "value" {
+		t.Errorf("expected CUSTOM_VAR=value, got Environment=%#v", cfg.Shell.Environment)
+	}
+
+	// Overriding one env var must not drop the defaults that weren't mentioned.
+	if got := cfg.Shell.Environment["LANG"]; got != "en_US.UTF-8" {
+		t.Errorf("expected default LANG to survive the merge, got Environment=%#v", cfg.Shell.Environment)
+	}
+}

@@ -48,7 +48,7 @@ The bundled `make install` writes `~/.config/setup-mac/config.yaml` only if it d
 ### From Source
 
 Requirements:
-- Go 1.24+
+- Go 1.27+
 - macOS (tested on Sonoma 14.x+)
 
 ```bash
@@ -82,6 +82,7 @@ setup-mac install --all
 | `update` | Update installed tools (Homebrew, Oh-My-Zsh) |
 | `validate` | Validate configuration file |
 | `config init` | Write the default config to `~/.config/setup-mac/config.yaml` |
+| `config wizard` | Interactively build a tailored config.yaml |
 | `completion` | Generate shell completion scripts (bash, zsh, fish, powershell) |
 | `version` | Print version information |
 
@@ -148,6 +149,17 @@ setup-mac config init --output ./my-setup.yaml
 
 # Overwrite an existing one
 setup-mac config init --force
+```
+
+Prefer to be asked instead of hand-editing YAML? `setup-mac config wizard` walks through which
+components to enable (Homebrew, terminal setup, shell config, macOS defaults, Git, SSH) and, for
+Homebrew, which packages to install — leaving finer-grained settings (individual macOS tweaks,
+aliases) at their defaults for you to tweak afterward.
+
+```bash
+setup-mac config wizard
+setup-mac config wizard --output ./my-setup.yaml
+setup-mac config wizard --force
 ```
 
 ### Shell completion

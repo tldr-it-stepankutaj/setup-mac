@@ -183,14 +183,14 @@ func (h *HomebrewInstaller) isFormulaInstalled(formula string, installed map[str
 
 	// Check for versioned variants (e.g., "node" matches "node@18", "node@20")
 	baseName := formula
-	if idx := strings.Index(formula, "@"); idx != -1 {
-		baseName = formula[:idx]
+	if before, _, ok := strings.Cut(formula, "@"); ok {
+		baseName = before
 	}
 
 	for pkg := range installed {
 		pkgBase := pkg
-		if idx := strings.Index(pkg, "@"); idx != -1 {
-			pkgBase = pkg[:idx]
+		if before, _, ok := strings.Cut(pkg, "@"); ok {
+			pkgBase = before
 		}
 		if pkgBase == baseName {
 			return true
@@ -255,8 +255,8 @@ func (h *HomebrewInstaller) getInstalledApplications() map[string]bool {
 	for _, entry := range entries {
 		name := entry.Name()
 		// Remove .app suffix and lowercase for comparison
-		if strings.HasSuffix(name, ".app") {
-			name = strings.TrimSuffix(name, ".app")
+		if before, ok := strings.CutSuffix(name, ".app"); ok {
+			name = before
 			apps[strings.ToLower(name)] = true
 		}
 	}
@@ -297,7 +297,7 @@ func (h *HomebrewInstaller) getInstalledFormulae(ctx context.Context) map[string
 		return installed
 	}
 
-	for _, line := range strings.Split(result.Stdout, "\n") {
+	for line := range strings.SplitSeq(result.Stdout, "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
 			installed[line] = true
@@ -319,7 +319,7 @@ func (h *HomebrewInstaller) getInstalledCasks(ctx context.Context) map[string]bo
 		return installed
 	}
 
-	for _, line := range strings.Split(result.Stdout, "\n") {
+	for line := range strings.SplitSeq(result.Stdout, "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
 			installed[line] = true

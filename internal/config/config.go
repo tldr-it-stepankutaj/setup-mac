@@ -1,12 +1,11 @@
 package config
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/viper"
+	yaml "go.yaml.in/yaml/v3"
 )
 
 // autoDiscoverNames lists filenames searched in ~/.config/setup-mac/ when no
@@ -37,10 +36,8 @@ func LoadDefault() (*Config, error) {
 }
 
 func loadFromPath(path string) (*Config, string, error) {
-	v := viper.NewWithOptions(viper.KeyDelimiter("::"))
-	v.SetConfigType("yaml")
-
-	if err := v.ReadConfig(bytes.NewBufferString(DefaultConfig)); err != nil {
+	merged := map[string]interface{}{}
+	if err := yaml.Unmarshal([]byte(DefaultConfig), &merged); err != nil {
 		return nil, "", fmt.Errorf("failed to load default config: %w", err)
 	}
 
@@ -49,22 +46,61 @@ func loadFromPath(path string) (*Config, string, error) {
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to resolve config path: %w", err)
 		}
-		if _, err := os.Stat(absPath); err != nil {
+
+		data, err := os.ReadFile(absPath)
+		if err != nil {
 			return nil, "", fmt.Errorf("config file not found: %s", absPath)
 		}
 
-		v.SetConfigFile(absPath)
-		if err := v.MergeInConfig(); err != nil {
-			return nil, "", fmt.Errorf("failed to merge config: %w", err)
+		var override map[string]interface{}
+		if err := yaml.Unmarshal(data, &override); err != nil {
+			return nil, "", fmt.Errorf("failed to parse config: %w", err)
 		}
+		merged = deepMergeMaps(merged, override)
 		path = absPath
 	}
 
+	// Round-trip through YAML rather than a generic decoder (e.g.
+	// mapstructure) so struct fields resolve via their `yaml` tags — the
+	// same tags the merged data was itself produced from.
+	mergedYAML, err := yaml.Marshal(merged)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to render merged config: %w", err)
+	}
+
 	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := yaml.Unmarshal(mergedYAML, &cfg); err != nil {
 		return nil, "", fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 	return &cfg, path, nil
+}
+
+// deepMergeMaps merges override on top of base and returns the result,
+// recursing into nested maps and replacing everything else (scalars,
+// slices) wholesale with override's value.
+//
+// This intentionally avoids viper's Load/MergeInConfig, which normalizes
+// every map key to lowercase (via its case-insensitive internal store) even
+// for values the user cares about verbatim — silently turning
+// `shell.environment.EDITOR` into `editor`, which real shells never read.
+// Keys here are kept byte-for-byte as written.
+func deepMergeMaps(base, override map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(base))
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, v := range override {
+		if baseVal, ok := out[k]; ok {
+			baseMap, baseIsMap := baseVal.(map[string]interface{})
+			overrideMap, overrideIsMap := v.(map[string]interface{})
+			if baseIsMap && overrideIsMap {
+				out[k] = deepMergeMaps(baseMap, overrideMap)
+				continue
+			}
+		}
+		out[k] = v
+	}
+	return out
 }
 
 // autoDiscoverConfig returns the first existing config file under
